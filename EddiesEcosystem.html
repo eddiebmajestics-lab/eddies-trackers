@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Eddie's Tracker: Biochar</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+    h1, h2 { text-align: center; }
+    form { background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; }
+    button { padding: 10px; width: 100%; background: green; color: white; border: none; }
+    .entry { background: white; padding: 10px; margin: 10px 0; border-radius: 10px; }
+    .stats { background: #dff0d8; padding: 15px; margin-bottom: 20px; border-radius: 10px; }
+  </style>
+</head>
+
+<body>
+
+<h1>Eddie’s Tracker: Biochar</h1>
+
+<div class="stats">
+  <h2>Production Stats</h2>
+
+  <label>Set Goal (m³)</label>
+  <input type="number" id="goal" value="40">
+
+  <p>Total Production: <span id="total">0</span> m³</p>
+  <p>Progress: <span id="progress">0</span>%</p>
+
+  <button onclick="window.print()">Print Report</button>
+</div>
+
+<form id="burnForm">
+  <h2>New Burn Entry</h2>
+
+  <label>Date</label>
+  <input type="date" id="date" required>
+
+  <label>Kiln</label>
+  <select id="kiln">
+    <option>TLUD</option>
+    <option>Muxham</option>
+    <option>Stretch Muxham</option>
+    <option>Kon-Tiki</option>
+  </select>
+
+  <label>Material</label>
+  <select id="material">
+    <option>Palm</option>
+    <option>Oak</option>
+    <option>Olive</option>
+    <option>Lemon</option>
+    <option>Brush</option>
+    <option>Mixed</option>
+  </select>
+
+  <h3>Input Measurement</h3>
+
+  <label>Wheelbarrows</label>
+  <input type="number" id="wheelbarrows" placeholder="e.g. 15">
+
+  <label>Square Meters (pile)</label>
+  <input type="number" step="0.1" id="sqm" placeholder="e.g. 1.5">
+
+  <label>Notes on Input</label>
+  <input type="text" id="inputNotes" placeholder="optional">
+
+  <label>Output (m³)</label>
+  <input type="number" step="0.01" id="output" required>
+
+  <label>Burn Heat</label>
+  <select id="heat">
+    <option>Low</option>
+    <option>Medium</option>
+    <option>High</option>
+  </select>
+
+  <label>Quench Method</label>
+  <select id="quench">
+    <option>Water</option>
+    <option>Soil</option>
+    <option>Lid / Choke</option>
+    <option>Natural Burn Out</option>
+  </select>
+
+  <label>Notes</label>
+  <textarea id="notes"></textarea>
+
+  <button type="submit">Save Burn</button>
+</form>
+
+<h2>Burn Records</h2>
+<div id="entries"></div>
+
+<script>
+let burns = JSON.parse(localStorage.getItem("burns")) || [];
+
+const form = document.getElementById("burnForm");
+const entriesDiv = document.getElementById("entries");
+const goalInput = document.getElementById("goal");
+
+// Conversion constants
+const wheelbarrowVolume = 0.08; // m³
+const sqmHeightEstimate = 0.5;  // m
+
+function calculateInput(wheelbarrows, sqm) {
+  let wb = Number(wheelbarrows) || 0;
+  let sm = Number(sqm) || 0;
+
+  let wbVolume = wb * wheelbarrowVolume;
+  let sqmVolume = sm * sqmHeightEstimate;
+
+  return wbVolume + sqmVolume;
+}
+
+function updateStats() {
+  let total = burns.reduce((sum, b) => sum + Number(b.output), 0);
+  document.getElementById("total").innerText = total.toFixed(2);
+
+  let goal = Number(goalInput.value) || 1;
+  let progress = (total / goal) * 100;
+
+  document.getElementById("progress").innerText = progress.toFixed(1);
+}
+
+function displayBurns() {
+  entriesDiv.innerHTML = "";
+
+  burns.forEach((burn) => {
+    const efficiency = burn.input ? (burn.output / burn.input * 100).toFixed(1) : "N/A";
+
+    const div = document.createElement("div");
+    div.className = "entry";
+
+    div.innerHTML = `
+      <strong>Date:</strong> ${burn.date}<br>
+      <strong>Kiln:</strong> ${burn.kiln}<br>
+      <strong>Material:</strong> ${burn.material}<br>
+      <strong>Input:</strong> ${burn.input.toFixed(2)} m³<br>
+      <strong>Output:</strong> ${burn.output} m³<br>
+      <strong>Efficiency:</strong> ${efficiency}%<br>
+      <strong>Heat:</strong> ${burn.heat}<br>
+      <strong>Quench:</strong> ${burn.quench}<br>
+      <strong>Notes:</strong> ${burn.notes}
+    `;
+
+    entriesDiv.appendChild(div);
+  });
+
+  updateStats();
+}
+
+form.addEventListener("submit", function(e) {
+  e.preventDefault();
+
+  let wheelbarrows = document.getElementById("wheelbarrows").value;
+  let sqm = document.getElementById("sqm").value;
+
+  let inputVolume = calculateInput(wheelbarrows, sqm);
+
+  const burn = {
+    date: document.getElementById("date").value,
+    kiln: document.getElementById("kiln").value,
+    material: document.getElementById("material").value,
+    input: inputVolume,
+    output: document.getElementById("output").value,
+    heat: document.getElementById("heat").value,
+    quench: document.getElementById("quench").value,
+    notes: document.getElementById("notes").value
+  };
+
+  burns.push(burn);
+  localStorage.setItem("burns", JSON.stringify(burns));
+
+  form.reset();
+  displayBurns();
+});
+
+goalInput.addEventListener("input", updateStats);
+
+displayBurns();
+</script>
+
+</body>
+</html>
